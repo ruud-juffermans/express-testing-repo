@@ -1,7 +1,17 @@
 const express = require("express");
+const cors = require("cors");
+
+
+const PORT = process.env.PORT || 3001;
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+
+app.use(cors({
+  origin: "https://ruudjuffermans.nl",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
 
 app.use(express.json());
 
