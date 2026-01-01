@@ -42,4 +42,5 @@ volumes:
 
 networks:
   app-network:
+    name: app_app-network
     driver: bridge

@@ -6,11 +6,27 @@ const PORT = process.env.PORT || 3001;
 
 const app = express();
 
-const corsOrigin = process.env.CORS_ORIGIN || "https://ruudjuffermans.nl";
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map(o => o.trim())
+  : [
+      "https://ruudjuffermans.nl",
+      "https://www.ruudjuffermans.nl",
+    ];
 
 app.use(
   cors({
-    origin: corsOrigin,
+    origin: (origin, cb) => {
+      // Allow server-to-server calls (no Origin header)
+      if (!origin) return cb(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return cb(null, true);
+      }
+
+      return cb(
+        new Error(`CORS blocked for origin: ${origin}`)
+      );
+    },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -29,18 +45,6 @@ const pool = new Pool({
   ssl: process.env.PGSSLMODE === "require" ? { rejectUnauthorized: false } : false,
 });
 
-// Simple DB init (for MVP). For production you’d use migrations.
-async function initDb() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS messages (
-      id SERIAL PRIMARY KEY,
-      content TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
-  console.log("DB ready: ensured table messages exists");
-}
-
 // health check
 app.get("/health", async (req, res) => {
   try {
@@ -56,7 +60,7 @@ app.get("/health", async (req, res) => {
 app.get("/dbmessages", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id, content, created_at FROM messages ORDER BY id DESC LIMIT 100"
+      "SELECT * FROM messages ORDER BY id DESC LIMIT 100"
     );
     res.json(result.rows);
   } catch (e) {
@@ -92,13 +96,7 @@ app.get("/servermessage", (req, res) => {
   });
 });
 
-initDb()
-  .then(() => {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`API running on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error("Failed to init DB:", err);
-    process.exit(1);
-  });
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`API running on port ${PORT}`);
+});
